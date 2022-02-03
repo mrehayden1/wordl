@@ -39,7 +39,7 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin(),
     new MiniCssExtractPlugin({
-      filename: 'styles.css'
+      filename: 'styles.[chunkhash].css'
     }),
     new VanillaExtractPlugin()
   ]
