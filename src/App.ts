@@ -12,12 +12,34 @@ import Keyboard, { Key, Letter } from 'App/Keyboard';
 
 import allWords from './words.json';
 
-const MESSAGE_DURATION = 2000;
+const MESSAGE_DURATION = 2250;
 const WORD = 'robot';
+
+function winMessage(guesses: number) {
+  switch (guesses) {
+    case 1:
+      return 'Incredible!';
+    case 2:
+      return 'Amazing!';
+    case 3:
+      return 'Great!';
+    case 4:
+      return 'Good!';
+    case 5:
+      return 'Got it!';
+    case 6:
+      return 'Phew!';
+    default:
+      return Error('Unpossible.');
+  }
+}
 
 const App = (sources: Sources): Sinks => {
 
   const keyboardSinks = Keyboard(sources);
+
+  const word$ = xs
+    .of(WORD.split('') as Letter[]);
 
   const guesses$: Stream<Guesses> = keyboardSinks
     .input$
@@ -54,17 +76,23 @@ const App = (sources: Sources): Sinks => {
     .input$
     .filter((key) => key === 'Enter')
     .compose(sampleCombine(guesses$))
-    .map(([ , { current } ]) => {
+    .map(([ , { current, past } ]) => {
       if (current.length === 0) {
         return xs.of(null);
-      } else if (current.length === 5) {
-        return !allWords.includes(current.join('')) ? (
+      } else if (current.length === 5 && !allWords.includes(current.join(''))) {
+        return (
           xs.of(null)
             .compose(delay(MESSAGE_DURATION))
             .startWith('Word not in list.')
-        ) : (
-          xs.of(null)
         );
+      } else if (current.length === 5 && current.join('') === WORD) {
+        return (
+          xs.of(null)
+            .compose(delay(MESSAGE_DURATION))
+            .startWith(winMessage(past.length))
+        );
+      } else if (current.length === 5) {
+        return xs.of(null);
       } else {
         return xs.of(null)
           .compose(delay(MESSAGE_DURATION))
@@ -73,9 +101,6 @@ const App = (sources: Sources): Sinks => {
     })
     .compose(flattenSequentially)
     .startWith(null);
-
-  const word$ = xs
-    .of(WORD.split('') as Letter[]);
 
   const gridSinks = Grid({ ...sources, guesses$, word$ });
 

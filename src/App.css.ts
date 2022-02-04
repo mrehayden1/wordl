@@ -1,4 +1,4 @@
-import { globalStyle, style } from '@vanilla-extract/css';
+import { globalStyle, keyframes, style } from '@vanilla-extract/css';
 
 globalStyle('html, body, #app', {
   color: '#333',
@@ -32,7 +32,13 @@ export const messageWrapper = style({
   width: '100%'
 });
 
+const fade = keyframes({
+  '0%': { opacity: 1 },
+  '100%': { opacity: 0 }
+});
+
 export const message = style({
+  animation: `${fade} .25s linear 2s`,
   background: 'rgba(0, 0, 0, 0.7)',
   borderRadius: '4px',
   color: 'white',
