@@ -10,13 +10,14 @@ export const guess = style({
   display: 'grid',
   gridGap: '10px',
   gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr',
-  marginBottom: '10px',
+  marginBottom: '8px',
   width: '100%'
 });
 
 export const box = style({
   alignItems: 'center',
-  border: '1px solid #ddd',
+  border: '2px solid #ddd',
+  borderRadius: '2px',
   display: 'flex',
   height: '70px',
   fontSize: '24px',
