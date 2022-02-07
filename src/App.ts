@@ -125,9 +125,11 @@ const App = (sources: Sources): Sinks => {
     .compose(sampleCombine(word$, currentGuess$.compose(delay(1)), pastGuesses$))
     .map(([ , word, guess, past ]) => {
       if (past.length === 6) {
+        const wordSentenceCase = word[0].toUpperCase()
+          + word.slice(1).join('');
         return xs.of(null)
           .compose(delay(MESSAGE_DURATION))
-          .startWith('Bad luck! Game Over.');
+          .startWith(`Bad luck! The answer was "${wordSentenceCase}".`);
       } else if (guess.length === 5 && !DICTIONARY.includes(guess.join(''))) {
         return xs.of(null)
           .compose(delay(MESSAGE_DURATION))
