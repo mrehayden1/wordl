@@ -25,6 +25,7 @@ export const button = style({
   padding: '10px',
   textAlign: 'center',
   textTransform: 'uppercase',
+  textShadow: '0 0 2px rgba(0, 0, 0, 0.25)',
   selectors: {
     '&:hover:not(:active)': {
       boxShadow: '0 0 3px rgba(0, 0, 0, 0.4)'

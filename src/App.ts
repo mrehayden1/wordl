@@ -1,4 +1,5 @@
 import { div } from '@cycle/dom';
+import { differenceInDays } from 'date-fns';
 import xs, { Stream } from 'xstream';
 import delay from 'xstream/extra/delay';
 import dropRepeats from 'xstream/extra/dropRepeats';
@@ -10,10 +11,11 @@ import * as styles from 'App.css';
 import Grid, { Grade } from 'App/Grid';
 import Keyboard, { Letter } from 'App/Keyboard';
 
-import ALL_WORDS from './words.json';
+import DAILY_WORDS from './daily-words.json';
+import DICTIONARY from './dictionary.json';
 
 const MESSAGE_DURATION = 2250;
-const WORD = 'robot';
+const START_DATE = new Date(2022, 1, 7);
 
 function gradeGuessLetter(
   word: Letter[],
@@ -48,15 +50,15 @@ function winMessage(guesses: number) {
     case 2:
       return 'Fantastic!';
     case 3:
-      return 'Excellent!';
+      return 'Superb!';
     case 4:
-      return 'Great!';
+      return 'Excellent!';
     case 5:
-      return 'Well Done!';
+      return 'Great!';
     case 6:
       return 'Phew!';
     default:
-      return Error('Unpossible.');
+      return Error('Undefined win message.');
   }
 }
 
@@ -66,8 +68,11 @@ const App = (sources: Sources): Sinks => {
   const enter$: Stream<{}> = xs.create();
   const letter$: Stream<Letter> = xs.create();
 
-  const word$ = xs
-    .of(WORD.split('') as Letter[]);
+  const word$: Stream<Letter[]> = xs
+    .of(
+      DAILY_WORDS[differenceInDays(new Date(), START_DATE)]
+        .split('') as Letter[]
+    );
 
   const currentGuess$: Stream<Letter[]> = xs
     .merge(
@@ -79,7 +84,7 @@ const App = (sources: Sources): Sinks => {
       if (k === 'Backspace') {
         return guess.slice(0, guess.length - 1);
       } else if (k === 'Enter') {
-        if (guess.length === 5 && ALL_WORDS.includes(guess.join(''))) {
+        if (guess.length === 5 && DICTIONARY.includes(guess.join(''))) {
           return [];
         } else {
           return guess;
@@ -99,7 +104,7 @@ const App = (sources: Sources): Sinks => {
       )
     )
     .fold((past, [ , word, guess ]) => {
-      if (guess.length === 5 && ALL_WORDS.includes(guess.join(''))) {
+      if (guess.length === 5 && DICTIONARY.includes(guess.join(''))) {
         return past
           .concat([
             guess
@@ -117,17 +122,17 @@ const App = (sources: Sources): Sinks => {
     }, []);
 
   const message$: Stream<String | null> = enter$
-    .compose(sampleCombine(currentGuess$.compose(delay(1)), pastGuesses$))
-    .map(([ , guess, past ]) => {
+    .compose(sampleCombine(word$, currentGuess$.compose(delay(1)), pastGuesses$))
+    .map(([ , word, guess, past ]) => {
       if (past.length === 6) {
         return xs.of(null)
           .compose(delay(MESSAGE_DURATION))
           .startWith('Bad luck! Game Over.');
-      } else if (guess.length === 5 && !ALL_WORDS.includes(guess.join(''))) {
+      } else if (guess.length === 5 && !DICTIONARY.includes(guess.join(''))) {
         return xs.of(null)
           .compose(delay(MESSAGE_DURATION))
           .startWith('Word not in list.');
-      } else if (guess.length === 5 && guess.join('') === WORD) {
+      } else if (guess.length === 5 && guess.join('') === word.join('')) {
         return xs.of(null)
           .compose(delay(MESSAGE_DURATION))
           .startWith(winMessage(past.length));
