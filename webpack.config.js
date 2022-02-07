@@ -1,11 +1,13 @@
+const { VanillaExtractPlugin } = require('@vanilla-extract/webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const { VanillaExtractPlugin } = require('@vanilla-extract/webpack-plugin');
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+
 const path = require('path');
 
 module.exports = {
   entry: './src/index.ts',
-  mode: 'none',
+  mode: process.env.NODE_ENV || 'production',
   module: {
     rules: [{
       test: /\.ts$/,
@@ -41,6 +43,11 @@ module.exports = {
     new MiniCssExtractPlugin({
       filename: 'styles.[chunkhash].css'
     }),
-    new VanillaExtractPlugin()
+    new VanillaExtractPlugin(),
+    new BundleAnalyzerPlugin({
+      analyzerMode: process.env.NODE_ENV !== undefined
+        ? 'static' : 'disabled',
+      openAnalyzer: false
+    })
   ]
 };
