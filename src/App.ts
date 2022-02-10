@@ -1,4 +1,4 @@
-import { div } from '@cycle/dom';
+import { div, header, main } from '@cycle/dom';
 import { differenceInDays } from 'date-fns';
 import xs, { Stream } from 'xstream';
 import delay from 'xstream/extra/delay';
@@ -124,13 +124,7 @@ const App = (sources: Sources): Sinks => {
   const message$: Stream<String | null> = enter$
     .compose(sampleCombine(word$, currentGuess$.compose(delay(1)), pastGuesses$))
     .map(([ , word, guess, past ]) => {
-      if (past.length === 6) {
-        const wordSentenceCase = word[0].toUpperCase()
-          + word.slice(1).join('');
-        return xs.of(null)
-          .compose(delay(MESSAGE_DURATION))
-          .startWith(`Bad luck! The answer was "${wordSentenceCase}".`);
-      } else if (guess.length === 5 && !DICTIONARY.includes(guess.join(''))) {
+      if (guess.length === 5 && !DICTIONARY.includes(guess.join(''))) {
         return xs.of(null)
           .compose(delay(MESSAGE_DURATION))
           .startWith('Word not in list.');
@@ -138,6 +132,12 @@ const App = (sources: Sources): Sinks => {
         return xs.of(null)
           .compose(delay(MESSAGE_DURATION))
           .startWith(winMessage(past.length));
+      } else if (past.length === 6) {
+        const wordSentenceCase = word[0].toUpperCase()
+          + word.slice(1).join('');
+        return xs.of(null)
+          .compose(delay(MESSAGE_DURATION))
+          .startWith(`Bad luck! The answer was "${wordSentenceCase}".`);
       } else if (guess.length === 5) {
         return xs.of(null);
       } else {
@@ -169,8 +169,13 @@ const App = (sources: Sources): Sinks => {
       )
       .map(([ gridDOM, keyboardDOM, message ]) => (
         div(`.${styles.game}`, [
-          gridDOM,
-          keyboardDOM,
+          header([
+            'Wordl'
+          ]),
+          main([
+            gridDOM,
+            keyboardDOM
+          ]),
           message && (
             div(`.${styles.messageWrapper}`, [
               div(`.${styles.message}`, message)

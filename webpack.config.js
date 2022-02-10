@@ -7,7 +7,7 @@ const path = require('path');
 
 module.exports = {
   entry: './src/index.ts',
-  mode: process.env.NODE_ENV || 'production',
+  mode: process.env.NODE_ENV === 'production' ? 'production' : 'none',
   module: {
     rules: [{
       test: /\.ts$/,

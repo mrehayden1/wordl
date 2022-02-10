@@ -1,5 +1,11 @@
 import { globalStyle, keyframes, style } from '@vanilla-extract/css';
 
+import { width } from './global.css';
+
+globalStyle('*', {
+  boxSizing: 'border-box'
+});
+
 globalStyle('html, body, #app', {
   color: '#333',
   fontFamily: 'sans-serif',
@@ -10,14 +16,36 @@ globalStyle('html, body, #app', {
 
 globalStyle('#app', {
   alignItems: 'center',
-  display: 'flex',
   justifyContent: 'center',
-  minWidth: '360px'
+});
+
+globalStyle('header', {
+  alignItems: 'center',
+  border: '0 solid #ddd',
+  borderBottomWidth: '2px',
+  display: 'flex',
+  fontSize: '20px',
+  fontWeight: '600',
+  height: '50px',
+  justifyContent: 'center',
+  width: '100%'
+});
+
+globalStyle('main', {
+  display: 'flex',
+  flexDirection: 'column',
+  height: 'calc(100% - 45px)',
+  justifyContent: 'center',
+  margin: '0 auto',
+  overflow: 'hidden',
+  width
 });
 
 export const game = style({
   display: 'flex',
-  flexDirection: 'column'
+  flexDirection: 'column',
+  height: '100%',
+  width: '100%'
 });
 
 export const messageWrapper = style({

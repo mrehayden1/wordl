@@ -19,7 +19,7 @@ export const button = style({
   color: '#000',
   cursor: 'pointer',
   fontWeight: '600',
-  height: '36px',
+  height: '50px',
   marginRight: '5px',
   minWidth: '30px',
   padding: '10px',
