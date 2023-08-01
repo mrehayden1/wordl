@@ -15,7 +15,6 @@ import DAILY_WORDS from './daily-words.json';
 import DICTIONARY from './dictionary.json';
 
 const MESSAGE_DURATION = 2250;
-const START_DATE = new Date(2022, 1, 7);
 
 function gradeGuessLetter(
   word: Letter[],
@@ -42,6 +41,7 @@ function gradeGuessLetter(
     );
   }
 }
+const START_DATE = new Date(2023, 7, 1);
 
 function winMessage(guesses: number) {
   switch (guesses) {
