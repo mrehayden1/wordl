@@ -16,6 +16,32 @@ type Sinks = C.Sinks;
 
 export type Grade = 'right' | 'wrong' | 'almost';
 
+export function gradeGuessLetter(
+  dailyWord: Letter[],
+  guess: Letter[],
+  past: Array<[ Letter, Grade ]>,
+  letter: Letter,
+  index: number
+): Grade {
+  if (letter === dailyWord[index]) {
+    return 'right';
+  } else {
+    return (
+      dailyWord
+        .filter((wl, j) => wl === letter && guess[j] !== wl)
+        .length > (
+          past
+            .filter(([ al, g ], j) => al === letter && g === 'almost')
+            .length
+        )
+    ) ? (
+      'almost'
+    ) : (
+      'wrong'
+    );
+  }
+}
+
 export function max(g: Grade, h: Grade): Grade {
   const enums = {
     'wrong': 0,

@@ -8,39 +8,13 @@ import sampleCombine from 'xstream/extra/sampleCombine';
 
 import { Sources, Sinks } from 'Component';
 import * as styles from 'App.css';
-import Grid, { Grade } from 'App/Grid';
+import Grid, { Grade, gradeGuessLetter } from 'App/Grid';
 import Keyboard, { Letter } from 'App/Keyboard';
 
 import DAILY_WORDS from './daily-words.json';
 import DICTIONARY from './dictionary.json';
 
 const MESSAGE_DURATION = 2250;
-
-function gradeGuessLetter(
-  word: Letter[],
-  guess: Letter[],
-  already: Array<[ Letter, Grade ]>,
-  letter: Letter,
-  index: number
-): Grade {
-  if (letter === word[index]) {
-    return 'right';
-  } else {
-    return (
-      word
-        .filter((wl, j) => wl === letter && guess[j] !== wl)
-        .length > (
-          already
-            .filter(([ al, g ], j) => al === letter && g === 'almost')
-            .length
-        )
-    ) ? (
-      'almost'
-    ) : (
-      'wrong'
-    );
-  }
-}
 const START_DATE = new Date(2023, 7, 1);
 
 function winMessage(guesses: number) {
