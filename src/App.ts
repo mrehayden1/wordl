@@ -42,76 +42,81 @@ const App = (sources: Sources): Sinks => {
   const enter$: Stream<{}> = xs.create();
   const letter$: Stream<Letter> = xs.create();
 
-  const word$: Stream<Letter[]> = xs
+  const dailyWord$: Stream<Letter[]> = xs
     .of(
       DAILY_WORDS[differenceInDays(new Date(), START_DATE)]
         .split('') as Letter[]
     );
 
-  const currentGuess$: Stream<Letter[]> = xs
+  const submitProxy$: Stream<Letter[]> = xs.create();
+
+  const won$: Stream<boolean> = submitProxy$
+    .compose(sampleCombine(dailyWord$))
+    .map(([ guess, dailyWord ]) => (
+      guess.join('') === dailyWord.join('')
+    ))
+    .startWith(false);
+
+  const keyboardInput$: Stream< Letter | 'Backspace' | 'Enter'> = xs
     .merge(
-      backspace$.mapTo('Backspace'),
-      enter$.mapTo('Enter'),
+      backspace$.mapTo('Backspace'as 'Backspace'),
+      enter$.mapTo('Enter' as 'Enter'),
       letter$
-    )
-    .fold((guess: Letter[], k: Letter | 'Backspace' | 'Enter') => {
-      if (k === 'Backspace') {
-        return guess.slice(0, guess.length - 1);
+    );
+
+  const currentInput$: Stream<Letter[]> = keyboardInput$
+    .compose(sampleCombine(won$))
+    .fold((input: Letter[], [ k, won ]) => {
+      if (won) {
+        return [];
+      } else if (k === 'Backspace') {
+        return input.slice(0, input.length - 1);
       } else if (k === 'Enter') {
-        if (guess.length === 5 && DICTIONARY.includes(guess.join(''))) {
+        if (input.length === 5 && DICTIONARY.includes(input.join(''))) {
           return [];
         } else {
-          return guess;
+          return input;
         }
-      } else if (guess.length < 5) {
-        return guess.concat([ k ]);
+      } else if (input.length < 5) {
+        return input.concat([ k ]);
       } else {
-        return guess;
+        return input;
       }
     }, []);
 
-  const pastGuesses$: Stream<Array<Array<[ Letter, Grade ]>>> = enter$
-    .compose(
-      sampleCombine(
-        word$,
-        currentGuess$.compose(delay(1))
-      )
-    )
-    .fold((past, [ , word, guess ]) => {
-      if (guess.length === 5 && DICTIONARY.includes(guess.join(''))) {
-        return past
-          .concat([
-            guess
-              .reduce((acc, l, i) => (
-                acc
-                .concat([[
-                  l,
-                  gradeGuessLetter(word, guess, acc, l, i)
-                ]])
-              ), [])
-          ]);
-      } else {
-        return past;
-      }
-    }, []);
+  const submit$: Stream<Letter[]> = enter$
+    // Introduce a delay to the input so we get the last input before its
+    // cleared by an Enter input.
+    .compose(sampleCombine(currentInput$.compose(delay(1)), won$))
+    .filter(([ , , won ]) => !won)
+    .map(([ enter, input ]) => input);
 
-  const message$: Stream<String | null> = enter$
-    .compose(sampleCombine(word$, currentGuess$.compose(delay(1)), pastGuesses$))
-    .map(([ , word, guess, past ]) => {
+  submitProxy$.imitate(submit$);
+
+  const validGuesses$: Stream<Array<Letter[]>> = submit$
+    .compose(sampleCombine(dailyWord$))
+    .fold((past, [ guess, dailyWord ]) => (
+      guess.length === 5 && DICTIONARY.includes(guess.join('')) ?
+        past.concat([guess]) : past
+    ), []);
+
+  const message$: Stream<String | null> = submit$
+    .compose(sampleCombine(dailyWord$, validGuesses$))
+    .map(([ guess, dailyWord, past ]) => {
       if (guess.length === 5 && !DICTIONARY.includes(guess.join(''))) {
         return xs.of(null)
           .compose(delay(MESSAGE_DURATION))
           .startWith('Word not in list.');
-      } else if (guess.length === 5 && guess.join('') === word.join('')) {
+      } else if (guess.length === 5 && guess.join('') === dailyWord.join('')) {
         return xs.of(null)
           .compose(delay(MESSAGE_DURATION))
           .startWith(winMessage(past.length));
       } else if (past.length === 6) {
-        const wordSentenceCase = word[0].toUpperCase()
-          + word.slice(1).join('');
+        const dailyWordSentenceCase = dailyWord[0].toUpperCase()
+          + dailyWord.slice(1).join('');
         return xs.of(null)
           .compose(delay(MESSAGE_DURATION))
-          .startWith(`Bad luck! The answer was "${wordSentenceCase}".`);
+          .startWith(`Bad luck! The answer was "${dailyWordSentenceCase}".`);
       } else if (guess.length === 5) {
         return xs.of(null);
       } else {
@@ -123,10 +128,33 @@ const App = (sources: Sources): Sinks => {
     .compose(flattenSequentially)
     .startWith(null);
 
-  const gridSinks = Grid({ ...sources, currentGuess$, pastGuesses$, word$ });
+  const gradedGuesses$: Stream<Array<Array<[ Letter, Grade ]>>> =
+    validGuesses$
+      .compose(sampleCombine(dailyWord$))
+      .map(([ guesses, dailyWord ]) => (
+        guesses
+          .map((guess) => (
+            guess
+              .reduce((acc, l, i) => (
+                acc
+                  .concat([[
+                    l,
+                    gradeGuessLetter(dailyWord, guess, acc, l, i)
+                  ]])
+              ), [])
+          ))
+      ))
+      .startWith([]);
+
+  const gridSinks = Grid({
+    ...sources,
+    currentInput$,
+    pastGuesses$: gradedGuesses$,
+    dailyWord$
+  });
 
   const keyboardSinks = Keyboard({
-    pastGuesses$,
+    pastGuesses$: gradedGuesses$,
     ...sources
   });
 

@@ -7,9 +7,9 @@ import * as styles from './Grid.css';
 import { Letter } from './Keyboard';
 
 interface Sources extends C.Sources {
-  currentGuess$: Stream<Letter[]>;
+  currentInput$: Stream<Letter[]>;
   pastGuesses$: Stream<Array<Array<[ Letter, Grade ]>>>;
-  word$: Stream<Letter[]>;
+  dailyWord$: Stream<Letter[]>;
 };
 
 type Sinks = C.Sinks;
@@ -52,9 +52,9 @@ export function max(g: Grade, h: Grade): Grade {
 }
 
 function renderGrid(
-  currentGuess: Letter[],
+  currentInput: Letter[],
   pastGuesses: Array<Array<[ Letter, Grade ]>>,
-  word: Letter[]
+  dailyWord: Letter[]
 ): VNode[] {
 
   return [1,2,3,4,5,6].map((j) => (
@@ -73,7 +73,7 @@ function renderGrid(
           pastGuesses[j - 1][i - 1][0]
         ) : (
           j === pastGuesses.length + 1 ? (
-            currentGuess[i - 1]
+            currentInput[i - 1]
           ) : ''
         )
       ))
@@ -85,13 +85,13 @@ function renderGrid(
 const Grid = (sources: Sources): Sinks => ({
   DOM: xs
     .combine(
-      sources.currentGuess$,
+      sources.currentInput$,
       sources.pastGuesses$,
-      sources.word$
+      sources.dailyWord$
     )
-    .map(([ currentGuess, guesses, word ]) => (
+    .map(([ currentInput, guesses, dailyWord ]) => (
       div(`.${styles.grid}`, (
-        renderGrid(currentGuess, guesses, word)
+        renderGrid(currentInput, guesses, dailyWord)
       ))
     ))
 });
