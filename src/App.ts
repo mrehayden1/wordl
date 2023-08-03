@@ -3,7 +3,7 @@ import { differenceInDays } from 'date-fns';
 import xs, { Stream } from 'xstream';
 import delay from 'xstream/extra/delay';
 import dropRepeats from 'xstream/extra/dropRepeats';
-import flattenSequentially from 'xstream/extra/flattenSequentially';
+import flattenConcurrently from 'xstream/extra/flattenConcurrently';
 import sampleCombine from 'xstream/extra/sampleCombine';
 
 import { Sources, Sinks } from 'Component';
@@ -17,7 +17,7 @@ import DICTIONARY from './dictionary.json';
 const MESSAGE_DURATION = 2250;
 const START_DATE = new Date(2023, 7, 1);
 
-function winMessage(guesses: number) {
+function winMessage(guesses: number): string {
   switch (guesses) {
     case 1:
       return 'Perfect!';
@@ -32,7 +32,7 @@ function winMessage(guesses: number) {
     case 6:
       return 'Phew!';
     default:
-      return Error('Undefined win message.');
+      throw Error('Undefined win message.');
   }
 }
 
@@ -100,33 +100,49 @@ const App = (sources: Sources): Sinks => {
         past.concat([guess]) : past
     ), []);
 
-  const message$: Stream<String | null> = submit$
+  const messages$: Stream<Array<[ string, number ]>> = submit$
     .compose(sampleCombine(dailyWord$, validGuesses$))
-    .map(([ guess, dailyWord, past ]) => {
-      if (guess.length === 5 && !DICTIONARY.includes(guess.join(''))) {
-        return xs.of(null)
+    .map(([ guess, dailyWord, past ]): Stream<[ string, number ]> => {
+      const messageId = Date.now();
+
+      if (guess.length < 5) {
+        return xs.of([ '', messageId ] as [ string, number ])
           .compose(delay(MESSAGE_DURATION))
-          .startWith('Word not in list.');
-      } else if (guess.length === 5 && guess.join('') === dailyWord.join('')) {
-        return xs.of(null)
+          .startWith([ 'Your guess is too short.', messageId ]);
+      } else if (!DICTIONARY.includes(guess.join(''))) {
+        return xs.of([ '', messageId ] as [ string, number ])
           .compose(delay(MESSAGE_DURATION))
-          .startWith(winMessage(past.length));
+          .startWith([ 'Word not in list.', messageId ]);
+      } else if (guess.join('') === dailyWord.join('')) {
+        return xs.of([ '', messageId ] as [ string, number ])
+          .compose(delay(MESSAGE_DURATION))
+          .startWith([ winMessage(past.length), messageId ]);
       } else if (past.length === 6) {
         const dailyWordSentenceCase = dailyWord[0].toUpperCase()
           + dailyWord.slice(1).join('');
-        return xs.of(null)
+
+        return xs.of([ '', messageId ] as [ string, number ])
           .compose(delay(MESSAGE_DURATION))
-          .startWith(`Bad luck! The answer was "${dailyWordSentenceCase}".`);
-      } else if (guess.length === 5) {
-        return xs.of(null);
+          .startWith([
+            `Bad luck! The answer was "${dailyWordSentenceCase}".`,
+            messageId
+          ]);
       } else {
-        return xs.of(null)
-          .compose(delay(MESSAGE_DURATION))
-          .startWith('Your guess is too short.');
+        return xs.never();
       }
     })
-    .compose(flattenSequentially)
-    .startWith(null);
+    .compose(flattenConcurrently)
+    .fold((messages, [ message, id ]) => {
+      if (message === '') {
+        return messages
+          .filter(([ , i ]) => {
+            return i !== id;
+          });
+      } else {
+        return messages
+          .concat([[ message, id ]]);
+      }
+    }, []);
 
   const gradedGuesses$: Stream<Array<Array<[ Letter, Grade ]>>> =
     validGuesses$
@@ -167,9 +183,9 @@ const App = (sources: Sources): Sinks => {
       .combine(
         gridSinks.DOM,
         keyboardSinks.DOM,
-        message$
+        messages$
       )
-      .map(([ gridDOM, keyboardDOM, message ]) => (
+      .map(([ gridDOM, keyboardDOM, messages ]) => (
         div(`.${styles.game}`, [
           header([
             'Wordl'
@@ -178,11 +194,15 @@ const App = (sources: Sources): Sinks => {
             gridDOM,
             keyboardDOM
           ]),
-          message && (
-            div(`.${styles.messageWrapper}`, [
-              div(`.${styles.message}`, message)
-            ])
-          )
+          div(`.${styles.messageWrapper}`, (
+            messages.map(([ message, id ]) => (
+              div(`.${styles.message}`, {
+                key: id
+              }, [
+                message
+              ])
+            ))
+          ))
         ])
       ))
   };

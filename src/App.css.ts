@@ -51,6 +51,8 @@ export const game = style({
 export const messageWrapper = style({
   alignItems: 'center',
   display: 'flex',
+  flexDirection: 'column',
+  gap: '10px',
   height: '100%',
   justifyContent: 'center',
   left: 0,
