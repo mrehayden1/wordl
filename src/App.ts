@@ -44,7 +44,7 @@ const App = (sources: Sources): Sinks => {
 
   const dailyWord$: Stream<Letter[]> = xs
     .of(
-      DAILY_WORDS[differenceInDays(new Date(), START_DATE)]
+      DAILY_WORDS[differenceInDays(new Date(), START_DATE) % DAILY_WORDS.length]
         .split('') as Letter[]
     );
 
