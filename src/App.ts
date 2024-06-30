@@ -11,8 +11,8 @@ import * as styles from 'App.css';
 import Grid, { Grade, gradeGuessLetter } from 'App/Grid';
 import Keyboard, { Letter } from 'App/Keyboard';
 
-import DAILY_WORDS from './daily-words.json';
-import DICTIONARY from './dictionary.json';
+import DAILY_WORDS from '../data/daily-words.json';
+import DICTIONARY from '../data/dictionary.json';
 
 const MESSAGE_DURATION = 2250;
 const START_DATE = new Date(2023, 7, 1);
