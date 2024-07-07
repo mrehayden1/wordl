@@ -188,7 +188,7 @@ const App = (sources: Sources): Sinks => {
       .map(([ gridDOM, keyboardDOM, messages ]) => (
         div(`.${styles.game}`, [
           header([
-            'Wordl'
+            'Wordle'
           ]),
           main([
             gridDOM,
