@@ -123,7 +123,8 @@ const Grid = (sources: Sources): Sinks => {
         div(`.${styles.grid}`, (
           renderGrid(dailyWord, currentInput, guesses, isFlipped)
         ))
-      ))
+      )),
+    storage: xs.never()
   };
 };
 

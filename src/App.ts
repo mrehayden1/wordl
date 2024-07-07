@@ -15,7 +15,13 @@ import DAILY_WORDS from '../data/daily-words.json';
 import DICTIONARY from '../data/dictionary.json';
 
 const MESSAGE_DURATION = 2250;
-const START_DATE = new Date(2023, 7, 1);
+const INIT_DATE = new Date(2023, 7, 1);
+const DATE = new Date();
+const DATE_STAMP = DATE.toLocaleDateString('en-GB', {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric'
+  });
 
 function winMessage(guesses: number): string {
   switch (guesses) {
@@ -44,7 +50,7 @@ const App = (sources: Sources): Sinks => {
 
   const dailyWord$: Stream<Letter[]> = xs
     .of(
-      DAILY_WORDS[differenceInDays(new Date(), START_DATE) % DAILY_WORDS.length]
+      DAILY_WORDS[differenceInDays(DATE, INIT_DATE) % DAILY_WORDS.length]
         .split('') as Letter[]
     );
 
@@ -93,12 +99,32 @@ const App = (sources: Sources): Sinks => {
 
   submitProxy$.imitate(submit$);
 
-  const validGuesses$: Stream<Array<Letter[]>> = submit$
-    .compose(sampleCombine(dailyWord$))
-    .fold((past, [ guess, dailyWord ]) => (
-      guess.length === 5 && DICTIONARY.includes(guess.join('')) ?
-        past.concat([guess]) : past
-    ), []);
+  // Store the guesses in local storage to prevent replays on the same day.
+
+  // Read the initial value from storage
+  const validGuesses$: Stream<Array<Letter[]>> = sources
+    .storage
+    .local
+    .getItem(DATE_STAMP)
+    .map((a: string) => a ? JSON.parse(a) : [] as Array<Letter[]>);
+
+  // Write guesses to storage and read them back out again to react to changes
+  const storage$ = validGuesses$
+    .map((guesses) => (
+      submit$
+        .compose(sampleCombine(dailyWord$))
+        .fold((past, [ guess, dailyWord ]) => (
+          guess.length === 5 && DICTIONARY.includes(guess.join('')) ?
+            past.concat([guess]) : past
+        ), guesses)
+        .drop(1)
+        .map((v) => ({
+          // Just want a human readable datestamp, doesn't need to be locale specific
+          key: DATE_STAMP,
+          value: JSON.stringify(v)
+        }))
+    ))
+    .flatten();
 
   const messages$: Stream<Array<[ string, number ]>> = submit$
     .compose(sampleCombine(dailyWord$, validGuesses$))
@@ -204,7 +230,8 @@ const App = (sources: Sources): Sinks => {
             ))
           ))
         ])
-      ))
+      )),
+    storage: storage$
   };
 };
 

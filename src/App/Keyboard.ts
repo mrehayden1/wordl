@@ -114,6 +114,7 @@ const Keyboard = (sources: Sources): Sinks => {
           ])
         );
       }),
+    storage: xs.never(),
     backspace$,
     enter$,
     letter$

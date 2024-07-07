@@ -26,6 +26,7 @@
   "dependencies": {
     "@cycle/dom": "^23.0.0",
     "@cycle/run": "^5.7.0",
+    "@cycle/storage": "^5.1.2",
     "date-fns": "^2.28.0",
     "xstream": "^11.14.0"
   }
