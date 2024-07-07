@@ -1,5 +1,6 @@
 import { VNode, div } from '@cycle/dom';
 import xs, { Stream } from 'xstream';
+import delay from 'xstream/extra/delay';
 
 import * as C from 'Component';
 
@@ -15,6 +16,8 @@ interface Sources extends C.Sources {
 type Sinks = C.Sinks;
 
 export type Grade = 'right' | 'wrong' | 'almost';
+
+type FlipState = 'no' | 'yes' | 'half'
 
 export function gradeGuessLetter(
   dailyWord: Letter[],
@@ -52,20 +55,26 @@ export function max(g: Grade, h: Grade): Grade {
 }
 
 function renderGrid(
+  dailyWord: Letter[],
   currentInput: Letter[],
   pastGuesses: Array<Array<[ Letter, Grade ]>>,
-  dailyWord: Letter[]
+  flipping: FlipState[]
 ): VNode[] {
 
   return [1,2,3,4,5,6].map((j) => (
     div(`.${styles.guess}`, [1,2,3,4,5].map((i) => (
       div(`.${styles.box}`, {
         class: {
-          [styles.boxAlmost]: j <= pastGuesses.length
+          [styles.animate]: flipping[i - 1] !== 'no'
+            && j === pastGuesses.length,
+          [styles.boxAlmost]: (flipping[i - 1] === 'half'
+            && j === pastGuesses.length || j < pastGuesses.length)
             && pastGuesses[j - 1][i - 1][1] === 'almost',
-          [styles.boxRight]: j <= pastGuesses.length
+          [styles.boxRight]: (flipping[i - 1] === 'half'
+            && j === pastGuesses.length || j < pastGuesses.length)
             && pastGuesses[j - 1][i - 1][1] === 'right',
-          [styles.boxWrong]: j <= pastGuesses.length
+          [styles.boxWrong]: (flipping[i - 1] === 'half'
+            && j === pastGuesses.length || j < pastGuesses.length)
             && pastGuesses[j - 1][i - 1][1] === 'wrong'
         }
       }, (
@@ -82,18 +91,40 @@ function renderGrid(
 
 }
 
-const Grid = (sources: Sources): Sinks => ({
-  DOM: xs
-    .combine(
-      sources.currentInput$,
-      sources.pastGuesses$,
-      sources.dailyWord$
-    )
-    .map(([ currentInput, guesses, dailyWord ]) => (
-      div(`.${styles.grid}`, (
-        renderGrid(currentInput, guesses, dailyWord)
-      ))
+const Grid = (sources: Sources): Sinks => {
+  const flipping$: Stream<FlipState[]> = sources
+    .pastGuesses$
+    .filter((g) => g.length > 0)
+    .map(() => (
+      xs
+        .combine
+        .apply(null,
+          [1,2,3,4,5].map((i) => (
+            xs.merge(
+              xs.of('half').compose(delay((i - 1) * 500 + 500)),
+              xs.of('yes').compose(delay((i - 1) * 500))
+            )
+            .startWith('no')
+          ))
+        ) as Stream<FlipState[]>
     ))
-});
+    .flatten()
+    .startWith(['no', 'no', 'no', 'no', 'no']);
+
+  return {
+    DOM: xs
+      .combine(
+        sources.dailyWord$,
+        sources.currentInput$,
+        sources.pastGuesses$,
+        flipping$
+      )
+      .map(([ dailyWord, currentInput, guesses, isFlipped ]) => (
+        div(`.${styles.grid}`, (
+          renderGrid(dailyWord, currentInput, guesses, isFlipped)
+        ))
+      ))
+  };
+};
 
 export default Grid;

@@ -1,6 +1,12 @@
-import { globalStyle, style } from '@vanilla-extract/css';
+import { globalStyle, keyframes, style } from '@vanilla-extract/css';
 
 import { almost, right, wrong } from 'global.css';
+
+export const flip = keyframes({
+  '0%': { transform: 'scaleX(1)' },
+  '50%': { transform: 'scaleX(0)' },
+  '100%': { transform: 'scaleX(1)' }
+});
 
 export const grid = style({
   marginBottom: '20px'
@@ -26,6 +32,12 @@ export const box = style({
   textTransform: 'uppercase',
   textShadow: '0 0 2px rgba(0, 0, 0, 0.25)',
   width: '100%'
+});
+
+export const animate = style({
+  animationDuration: '1s',
+  animationTimingFunction: 'linear',
+  animationName: flip
 });
 
 export const boxRight = style({
