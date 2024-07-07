@@ -15,6 +15,7 @@ import DAILY_WORDS from '../data/daily-words.json';
 import DICTIONARY from '../data/dictionary.json';
 
 const MESSAGE_DURATION = 2250;
+// The date the wordlist starts repeating from
 const INIT_DATE = new Date(2023, 7, 1);
 const DATE = new Date();
 const DATE_STAMP = DATE.toLocaleDateString('en-GB', {
@@ -54,12 +55,24 @@ const App = (sources: Sources): Sinks => {
         .split('') as Letter[]
     );
 
-  const submitProxy$: Stream<Letter[]> = xs.create();
+  // Store the guesses in local storage
+  // Read the initial value from storage
+  const validGuesses$: Stream<Array<Letter[]>> = sources
+    .storage
+    .local
+    .getItem(DATE_STAMP)
+    .map((v) => v ? JSON.parse(v as string) : [] as Array<Letter[]>);
 
-  const won$: Stream<boolean> = submitProxy$
-    .compose(sampleCombine(dailyWord$))
-    .map(([ guess, dailyWord ]) => (
-      guess.join('') === dailyWord.join('')
+  const roundOver$: Stream<boolean> = xs
+    .combine(
+      validGuesses$,
+      dailyWord$
+    )
+    .map(([ guesses, dailyWord ]) => (
+      guesses.length === 6 || (
+        guesses.length > 0
+          && guesses[guesses.length - 1].join('') === dailyWord.join('')
+      )
     ))
     .startWith(false);
 
@@ -71,11 +84,10 @@ const App = (sources: Sources): Sinks => {
     );
 
   const currentInput$: Stream<Letter[]> = keyboardInput$
-    .compose(sampleCombine(won$))
-    .fold((input: Letter[], [ k, won ]) => {
-      if (won) {
-        return [];
-      } else if (k === 'Backspace') {
+    .compose(sampleCombine(roundOver$))
+    .filter(([ , over ]) => !over)
+    .fold((input: Letter[], [ k, ]) => {
+      if (k === 'Backspace') {
         return input.slice(0, input.length - 1);
       } else if (k === 'Enter') {
         if (input.length === 5 && DICTIONARY.includes(input.join(''))) {
@@ -93,29 +105,24 @@ const App = (sources: Sources): Sinks => {
   const submit$: Stream<Letter[]> = enter$
     // Introduce a delay to the input so we get the last input before its
     // cleared by an Enter input.
-    .compose(sampleCombine(currentInput$.compose(delay(1)), won$))
+    .compose(
+      sampleCombine(
+        currentInput$.compose(delay(1)),
+        roundOver$
+      )
+    )
     .filter(([ , , won ]) => !won)
     .map(([ enter, input ]) => input);
-
-  submitProxy$.imitate(submit$);
-
-  // Store the guesses in local storage to prevent replays on the same day.
-
-  // Read the initial value from storage
-  const validGuesses$: Stream<Array<Letter[]>> = sources
-    .storage
-    .local
-    .getItem(DATE_STAMP)
-    .map((a: string) => a ? JSON.parse(a) : [] as Array<Letter[]>);
 
   // Write guesses to storage and read them back out again to react to changes
   const storage$ = validGuesses$
     .map((guesses) => (
       submit$
-        .compose(sampleCombine(dailyWord$))
-        .fold((past, [ guess, dailyWord ]) => (
-          guess.length === 5 && DICTIONARY.includes(guess.join('')) ?
-            past.concat([guess]) : past
+        .filter((guess) => (
+          guess.length === 5 && DICTIONARY.includes(guess.join(''))
+        ))
+        .fold((past, guess) => (
+          past.concat([guess])
         ), guesses)
         .drop(1)
         .map((v) => ({
@@ -142,8 +149,8 @@ const App = (sources: Sources): Sinks => {
       } else if (guess.join('') === dailyWord.join('')) {
         return xs.of([ '', messageId ] as [ string, number ])
           .compose(delay(MESSAGE_DURATION))
-          .startWith([ winMessage(past.length), messageId ]);
-      } else if (past.length === 6) {
+          .startWith([ winMessage(past.length + 1), messageId ]);
+      } else if (past.length + 1 === 6) {
         const dailyWordSentenceCase = dailyWord[0].toUpperCase()
           + dailyWord.slice(1).join('');
 
