@@ -4,4 +4,4 @@ A clone of the core game in Wordle written in around 500 lines of TypeScript (in
 
 ## Try it out
 
-Try it [Here](https://stupefied-ptolemy-43aada.netlify.app).
+Try it [Here](https://wordle-cyclejs.netlify.app).
