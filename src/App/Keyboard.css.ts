@@ -21,7 +21,7 @@ export const button = style({
   fontWeight: '600',
   height: '50px',
   marginRight: '5px',
-  minWidth: '30px',
+  minWidth: '29px',
   padding: '10px',
   textAlign: 'center',
   textTransform: 'uppercase',
