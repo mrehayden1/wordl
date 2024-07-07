@@ -84,8 +84,20 @@ const App = (sources: Sources): Sinks => {
     );
 
   const currentInput$: Stream<Letter[]> = keyboardInput$
-    .compose(sampleCombine(roundOver$))
-    .filter(([ , over ]) => !over)
+    .compose(sampleCombine(
+      roundOver$,
+      validGuesses$
+        .map((guesses) => (
+          guesses.length > 0 ? (
+            xs.merge(
+              xs.of(true),
+              xs.of(false).compose(delay(3000))
+            )
+          ) : xs.of(false)
+        ))
+        .flatten()
+    ))
+    .filter(([ , over, animating ]) => !over && !animating)
     .fold((input: Letter[], [ k, ]) => {
       if (k === 'Backspace') {
         return input.slice(0, input.length - 1);
